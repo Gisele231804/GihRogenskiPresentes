@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gih Rogenski Presentes</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- ===== TELA DE LOGIN ===== -->
+<div id="login-screen" class="login-screen">
+  <div class="login-bg-decoration"></div>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-icon">🎁</div>
+      <h1>Gih Rogenski<br><span>Presentes</span></h1>
+      <p class="brand-sub">Sistema de Controle de Estoque</p>
+    </div>
+    <div class="login-form">
+      <div class="form-group">
+        <label>Usuário</label>
+        <input type="text" id="login-user" placeholder="Digite seu usuário" autocomplete="off"/>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" id="login-pass" placeholder="Digite sua senha"/>
+      </div>
+      <div id="login-error" class="login-error hidden">Usuário ou senha inválidos.</div>
+      <button class="btn-primary btn-full" onclick="doLogin()">Entrar</button>
+    </div>
+    <!--
+    <div class="login-hint">
+      <p><strong>Matriz:</strong> admin / admin123</p>
+      <p><strong>Chavantes:</strong> filial1 / filial123</p>
+      <p><strong>Canitar:</strong> filial2 / filial123</p>
+      <p><strong>Nice Brito:</strong> filial3 / filial123</p>
+      <p><strong>Viviane:</strong> filial4 / filial123</p>
+    </div>--> 
+  </div>
+</div>
+
+<!-- ===== APP PRINCIPAL ===== -->
+<div id="app" class="app hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon-sm">🎁</div>
+      <div>
+        <div class="brand-name">Gih Rogenski</div>
+        <div class="brand-sub-sm">Presentes</div>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="user-avatar">M</div>
+      <div class="user-info">
+        <div class="user-name" id="user-display-name">Matriz</div>
+        <div class="user-role" id="user-role-badge">Administrador</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+        <span class="nav-icon">📊</span><span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-page="products" onclick="navigateTo('products')">
+        <span class="nav-icon">📦</span><span>Produtos</span>
+      </button>
+      <button class="nav-item" data-page="movements" onclick="navigateTo('movements')">
+        <span class="nav-icon">🔄</span><span>Movimentações</span>
+      </button>
+      <button class="nav-item admin-only" data-page="transfer" onclick="navigateTo('transfer')">
+        <span class="nav-icon">🔁</span><span>Transferências</span>
+      </button>
+      <button class="nav-item admin-only" data-page="brands" onclick="navigateTo('brands')">
+        <span class="nav-icon">🏷️</span><span>Marcas</span>
+      </button>
+      <button class="nav-item admin-only" data-page="branches" onclick="navigateTo('branches')">
+        <span class="nav-icon">🏪</span><span>Filiais</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="doLogout()">⬅ Sair</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <div class="notification-bell" onclick="toggleNotifications()">
+          🔔 <span class="notif-badge" id="notif-badge">0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- NOTIFICATIONS PANEL -->
+    <div class="notifications-panel hidden" id="notifications-panel">
+      <div class="notif-header">Alertas</div>
+      <div id="notifications-list"></div>
+    </div>
+
+    <!-- PAGES -->
+    <div class="page-content">
+
+      <!-- DASHBOARD PAGE -->
+      <section id="page-dashboard" class="page active">
+        <div class="page-header">
+          <h2>Dashboard</h2>
+          <p class="page-subtitle" id="dashboard-subtitle">Visão geral do estoque</p>
+        </div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header">⚠️ Estoque Baixo</div>
+            <div id="low-stock-list" class="alert-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">📅 Próximo do Vencimento</div>
+            <div id="expiry-list" class="alert-list"></div>
+          </div>
+        </div>
+        <div class="card mt-2">
+          <div class="card-header">📦 Estoque por Filial</div>
+          <div id="branch-stock-overview" class="branch-overview-grid"></div>
+        </div>
+      </section>
+
+      <!-- PRODUCTS PAGE -->
+      <section id="page-products" class="page">
+        <div class="page-header">
+          <h2>Produtos</h2>
+          <button class="btn-primary" onclick="openProductModal()">+ Novo Produto</button>
+        </div>
+        <!-- Filters -->
+        <div class="filters-bar">
+          <input type="text" id="filter-name" placeholder="🔍 Buscar por nome..." oninput="filterProducts()"/>
+          <select id="filter-brand" onchange="filterProducts()">
+            <option value="">Todas as marcas</option>
+          </select>
+          <select id="filter-branch" onchange="filterProducts()" class="admin-only-filter">
+            <option value="">Todas as filiais</option>
+          </select>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="products-table">
+            <thead>
+              <tr>
+                <th>Foto</th>
+                <th>Nome / SKU</th>
+                <th>Marca</th>
+                <th>Filial</th>
+                <th>Estoque</th>
+                <th>Validade</th>
+                <th>Custo</th>
+                <th>Venda</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="products-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- MOVEMENTS PAGE -->
+      <section id="page-movements" class="page">
+        <div class="page-header">
+          <h2>Movimentações</h2>
+          <div class="btn-group">
+            <button class="btn-success" onclick="openMovementModal('entrada')">+ Entrada</button>
+            <button class="btn-danger" onclick="openMovementModal('saida')">− Saída</button>
+          </div>
+        </div>
+        <div class="filters-bar">
+          <select id="filter-mov-type" onchange="filterMovements()">
+            <option value="">Todos os tipos</option>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+            <option value="transferencia">Transferência</option>
+          </select>
+          <select id="filter-mov-branch" onchange="filterMovements()" class="admin-only-filter">
+            <option value="">Todas as filiais</option>
+          </select>
+          <input type="date" id="filter-mov-date" onchange="filterMovements()"/>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Tipo</th>
+                <th>Produto</th>
+                <th>Filial</th>
+                <th>Qtd</th>
+                <th>Observação</th>
+              </tr>
+            </thead>
+            <tbody id="movements-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TRANSFER PAGE (admin only) -->
+      <section id="page-transfer" class="page">
+        <div class="page-header">
+          <h2>Transferência entre Filiais</h2>
+        </div>
+        <div class="transfer-form card">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Filial de Origem</label>
+              <select id="transfer-from" onchange="loadTransferProducts()">
+                <option value="">Selecione a origem</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Filial de Destino</label>
+              <select id="transfer-to">
+                <option value="">Selecione o destino</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Produto</label>
+            <select id="transfer-product">
+              <option value="">Selecione o produto</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Quantidade</label>
+            <input type="number" id="transfer-qty" min="1" placeholder="0"/>
+            <small id="transfer-available" class="form-hint"></small>
+          </div>
+          <div class="form-group">
+            <label>Observação</label>
+            <input type="text" id="transfer-obs" placeholder="Opcional..."/>
+          </div>
+          <button class="btn-primary btn-full" onclick="doTransfer()">Realizar Transferência</button>
+        </div>
+      </section>
+
+      <!-- BRANDS PAGE (admin only) -->
+      <section id="page-brands" class="page">
+        <div class="page-header">
+          <h2>Marcas</h2>
+          <button class="btn-primary" onclick="openBrandModal()">+ Nova Marca</button>
+        </div>
+        <div class="brands-grid" id="brands-grid"></div>
+      </section>
+
+      <!-- BRANCHES PAGE (admin only) -->
+      <section id="page-branches" class="page">
+        <div class="page-header">
+          <h2>Filiais</h2>
+        </div>
+        <div class="branches-grid" id="branches-grid"></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Product Modal -->
+<div class="modal-overlay hidden" id="product-modal">
+  <div class="modal large-modal">
+    <div class="modal-header">
+      <h3 id="product-modal-title">Novo Produto</h3>
+      <button class="modal-close" onclick="closeModal('product-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="product-id"/>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Nome do Produto *</label>
+          <input type="text" id="p-name" placeholder="Ex: Perfume Essencial"/>
+        </div>
+        <div class="form-group">
+          <label>Código/SKU *</label>
+          <input type="text" id="p-sku" placeholder="Ex: NAT-001"/>
+        </div>
+        <div class="form-group">
+          <label>Marca *</label>
+          <select id="p-brand"></select>
+        </div>
+        <div class="form-group admin-only-form">
+          <label>Filial *</label>
+          <select id="p-branch"></select>
+        </div>
+        <div class="form-group">
+          <label>Preço de Custo (R$) *</label>
+          <input type="number" id="p-cost" step="0.01" placeholder="0,00"/>
+        </div>
+        <div class="form-group">
+          <label>Preço de Venda (R$) *</label>
+          <input type="number" id="p-price" step="0.01" placeholder="0,00"/>
+        </div>
+        <div class="form-group">
+          <label>Quantidade Adquirida *</label>
+          <input type="number" id="p-qty-acquired" min="0" placeholder="0"/>
+        </div>
+        <div class="form-group">
+          <label>Data de Validade</label>
+          <input type="date" id="p-expiry"/>
+        </div>
+      </div>
+      <!-- Image Upload -->
+      <div class="form-group">
+        <label>Foto do Produto</label>
+        <div class="image-upload-area" id="image-upload-area" onclick="document.getElementById('p-image').click()">
+          <img id="image-preview" class="hidden" alt="Preview"/>
+          <div id="image-placeholder">
+            <span>📷</span>
+            <p>Clique para selecionar uma imagem</p>
+          </div>
+        </div>
+        <input type="file" id="p-image" accept="image/*" class="hidden" onchange="previewImage(this)"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('product-modal')">Cancelar</button>
+      <button class="btn-primary" onclick="saveProduct()">Salvar Produto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Movement Modal -->
+<div class="modal-overlay hidden" id="movement-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="movement-modal-title">Registrar Entrada</h3>
+      <button class="modal-close" onclick="closeModal('movement-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mov-type"/>
+      <div class="form-group">
+        <label>Produto *</label>
+        <select id="mov-product"></select>
+      </div>
+      <div class="form-group">
+        <label>Quantidade *</label>
+        <input type="number" id="mov-qty" min="1" placeholder="0"/>
+        <small id="mov-available" class="form-hint"></small>
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <input type="text" id="mov-obs" placeholder="Opcional..."/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('movement-modal')">Cancelar</button>
+      <button class="btn-primary" id="mov-btn" onclick="saveMovement()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brand Modal -->
+<div class="modal-overlay hidden" id="brand-modal">
+  <div class="modal small-modal">
+    <div class="modal-header">
+      <h3>Nova Marca</h3>
+      <button class="modal-close" onclick="closeModal('brand-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nome da Marca *</label>
+        <input type="text" id="brand-name" placeholder="Ex: Natura"/>
+      </div>
+      <div class="form-group">
+        <label>Cor (opcional)</label>
+        <input type="color" id="brand-color" value="#c8935a"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('brand-modal')">Cancelar</button>
+      <button class="btn-primary" onclick="saveBrand()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay hidden" id="confirm-modal">
+  <div class="modal small-modal">
+    <div class="modal-header">
+      <h3>Confirmar Exclusão</h3>
+      <button class="modal-close" onclick="closeModal('confirm-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message">Deseja realmente excluir este item?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('confirm-modal')">Cancelar</button>
+      <button class="btn-danger" id="confirm-btn">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notifications -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
