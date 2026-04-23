@@ -17,25 +17,29 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
+// No topo do script.js
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Função para Salvar no Firebase (substitua sua saveToStorage por esta)
+// Substitua as funções antigas por estas:
 function saveToStorage() {
+  // Salva no Firebase e também no LocalStorage (como backup)
   db.ref('gih_data').set(DATA);
+  localStorage.setItem('gih_data', JSON.stringify(DATA));
 }
 
-// Função para Carregar do Firebase (substitua sua loadFromStorage por esta)
 function loadFromStorage() {
+  // Escuta mudanças no Firebase em tempo real
   db.ref('gih_data').on('value', (snapshot) => {
     const firebaseData = snapshot.val();
     if (firebaseData) {
       DATA = firebaseData;
+      renderAll(); // Atualiza a tela com os dados novos
     } else {
+      // Se o Firebase estiver vazio, usa os dados iniciais
       DATA = JSON.parse(JSON.stringify(INITIAL_DATA));
       saveToStorage();
     }
-    renderAll();
   });
 }
 // ─── DADOS INICIAIS (seed) ────────────────────────────
